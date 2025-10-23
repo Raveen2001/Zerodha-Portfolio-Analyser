@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zerodha Portfolio Analyzer</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            color: #666;
+            font-size: 16px;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9ff;
+        }
+
+        .upload-area:hover {
+            background: #f0f2ff;
+            border-color: #764ba2;
+        }
+
+        .upload-area.dragover {
+            background: #e8ebff;
+            border-color: #5a67d8;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin: 10px 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .results.active {
+            display: block;
+        }
+
+        .set-container {
+            background: white;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+
+        .set-header {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 3px solid #667eea;
+        }
+
+        .summary {
+            background: #f8f9ff;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            font-size: 16px;
+        }
+
+        .summary-row.total {
+            font-weight: bold;
+            font-size: 18px;
+            border-top: 2px solid #667eea;
+            margin-top: 10px;
+            padding-top: 15px;
+        }
+
+        .summary-label {
+            color: #555;
+        }
+
+        .summary-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+        }
+
+        tr:hover {
+            background: #f8f9ff;
+        }
+
+        .positive {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .negative {
+            color: #ef4444;
+            font-weight: 600;
+        }
+
+        .neutral {
+            color: #6b7280;
+        }
+
+        .stock-name {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .action-buy {
+            background: #10b981;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .action-sell {
+            background: #ef4444;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .action-hold {
+            background: #6b7280;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-weight: 600;
+        }
+
+        .last-updated {
+            text-align: center;
+            color: #333;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-top: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .header {
+                padding: 20px;
+            }
+
+            .upload-section {
+                padding: 20px;
+            }
+
+            .upload-area {
+                padding: 30px 15px;
+            }
+
+            .upload-icon {
+                font-size: 36px;
+            }
+
+            .set-container {
+                padding: 20px;
+            }
+
+            .set-header {
+                font-size: 20px;
+            }
+
+            .summary {
+                padding: 15px;
+            }
+
+            .summary-row {
+                flex-direction: column;
+                gap: 5px;
+                padding: 8px 0;
+            }
+
+            .summary-row.total {
+                padding-top: 10px;
+            }
+
+            table {
+                font-size: 12px;
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+            
+            th, td {
+                padding: 8px 6px;
+                min-width: 80px;
+            }
+
+            th:first-child, td:first-child {
+                position: sticky;
+                left: 0;
+                background: white;
+                z-index: 1;
+            }
+
+            th:first-child {
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            }
+
+            .btn {
+                padding: 10px 20px;
+                font-size: 14px;
+                width: 100%;
+                margin: 5px 0;
+            }
+
+            .action-buy, .action-sell, .action-hold {
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+
+            .last-updated {
+                font-size: 12px;
+                padding: 10px;
+            }
+
+            div[style*="freelance"] {
+                padding: 20px 15px !important;
+            }
+
+            div[style*="freelance"] h3 {
+                font-size: 16px !important;
+            }
+
+            div[style*="freelance"] p {
+                font-size: 14px !important;
+            }
+
+            div[style*="freelance"] > div {
+                flex-direction: column !important;
+                gap: 10px !important;
+            }
+
+            div[style*="freelance"] a {
+                font-size: 14px !important;
+                word-break: break-all;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Zerodha Portfolio Analyzer</h1>
+            <p class="subtitle">Analyze your holdings and balance your investment sets</p>
+        </div>
+
+        <div class="upload-section">
+            <div class="upload-area" id="uploadArea">
+                <div class="upload-icon">📁</div>
+                <h3>Upload Your Zerodha Holdings CSV</h3>
+                <p style="color: #666; margin: 10px 0;">Drag and drop or click to select</p>
+                <input type="file" id="fileInput" accept=".csv">
+                <button class="btn" id="chooseFileBtn">Choose File</button>
+            </div>
+            <div id="fileName" style="margin-top: 15px; color: #667eea; font-weight: 600;"></div>
+        </div>
+
+        <div class="results" id="results">
+            <div id="setsContainer"></div>
+            <div class="last-updated" id="lastUpdated"></div>
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="btn btn-secondary" onclick="clearData()">Clear Data & Upload New</button>
+            </div>
+        </div>
+
+        <div style="background: white; padding: 25px; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.1); margin-top: 30px; text-align: center;">
+            <h3 style="color: #333; margin-bottom: 15px; font-size: 18px;">Need Custom Development?</h3>
+            <p style="color: #666; margin-bottom: 15px;">Looking for freelance web development, automation, or custom tools?</p>
+            <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap; align-items: center;">
+                <a href="https://raveen.in" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 16px;">
+                    🌐 Portfolio: Raveen.in
+                </a>
+                <a href="mailto:raveenanbarasan@gmail.com" style="color: #667eea; text-decoration: none; font-weight: 600; font-size: 16px;">
+                    ✉️ raveenanbarasan@gmail.com
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // CONFIGURATION SECTION - EDIT YOUR SETS HERE
+        // ============================================
+        // Add or modify your stock sets below
+        // Format: 'Set Name': ['STOCK1', 'STOCK2', 'STOCK3', ...]
+        // Stock names should match exactly as they appear in your Zerodha CSV
+        
+        const stockSets = {
+            'Set A': [
+                'PARAS',
+                'CAMS',
+                'POLYCAB',
+                'SYRMA',
+                'AVALON'
+            ],
+            'Set B': [
+                'SONACOMS',
+                'CDSL',
+                'CIPLA',
+                'AMBER',
+                'HATSUN'
+            ]
+            // To add more sets, copy the format above:
+            // 'Set C': [
+            //     'STOCK1',
+            //     'STOCK2',
+            //     'STOCK3'
+            // ]
+        };
+        
+        // ============================================
+        // END OF CONFIGURATION SECTION
+        // ============================================
+
+        let portfolioData = {};
+
+        // Load cached data on page load
+        window.addEventListener('load', () => {
+            loadCachedData();
+        });
+
+        // File upload handlers
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const chooseFileBtn = document.getElementById('chooseFileBtn');
+
+        // Prevent the upload area click from triggering when clicking the button
+        chooseFileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+
+        uploadArea.addEventListener('click', (e) => {
+            // Only trigger if not clicking the button
+            if (e.target !== chooseFileBtn && !chooseFileBtn.contains(e.target)) {
+                fileInput.click();
+            }
+        });
+
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.name.endsWith('.csv')) {
+                handleFile(file);
+            }
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        });
+
+        function handleFile(file) {
+            document.getElementById('fileName').textContent = `Loading: ${file.name}...`;
+            
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                dynamicTyping: true,
+                complete: function(results) {
+                    processCSV(results.data);
+                    document.getElementById('fileName').textContent = `✓ Loaded: ${file.name}`;
+                },
+                error: function(error) {
+                    alert('Error parsing CSV: ' + error.message);
+                    document.getElementById('fileName').textContent = '';
+                }
+            });
+        }
+
+        function processCSV(data) {
+            portfolioData = {};
+            
+            data.forEach(row => {
+                const instrument = row.Instrument ? row.Instrument.trim().toUpperCase() : '';
+                const invested = parseFloat(row.Invested) || 0;
+                const qty = parseFloat(row['Qty.']) || 0;
+                const curVal = parseFloat(row['Cur. val']) || 0;
+                const avgCost = parseFloat(row['Avg. cost']) || 0;
+                
+                if (instrument && invested > 0) {
+                    portfolioData[instrument] = {
+                        name: row.Instrument,
+                        quantity: qty,
+                        invested: invested,
+                        currentValue: curVal,
+                        avgCost: avgCost
+                    };
+                }
+            });
+
+            saveToStorage();
+            displayResults();
+        }
+
+        function displayResults() {
+            const container = document.getElementById('setsContainer');
+            container.innerHTML = '';
+
+            Object.keys(stockSets).forEach(setName => {
+                const setStocks = stockSets[setName];
+                const setData = analyzeSet(setName, setStocks);
+                container.innerHTML += createSetHTML(setName, setData);
+            });
+
+            document.getElementById('results').classList.add('active');
+            document.getElementById('lastUpdated').textContent = 
+                `Last updated: ${new Date().toLocaleString()}`;
+        }
+
+        function analyzeSet(setName, stocks) {
+            const holdings = [];
+            let totalInvested = 0;
+            let totalCurrentValue = 0;
+            let maxCurrentValue = 0;
+
+            stocks.forEach(stock => {
+                const stockData = portfolioData[stock];
+                if (stockData) {
+                    holdings.push({
+                        name: stockData.name,
+                        quantity: stockData.quantity,
+                        invested: stockData.invested,
+                        currentValue: stockData.currentValue,
+                        avgCost: stockData.avgCost
+                    });
+                    totalInvested += stockData.invested;
+                    totalCurrentValue += stockData.currentValue;
+                    maxCurrentValue = Math.max(maxCurrentValue, stockData.currentValue);
+                } else {
+                    holdings.push({
+                        name: stock,
+                        quantity: 0,
+                        invested: 0,
+                        currentValue: 0,
+                        avgCost: 0
+                    });
+                }
+            });
+
+            const targetPerStock = maxCurrentValue;
+            
+            const actions = holdings.map(holding => {
+                const difference = targetPerStock - holding.currentValue;
+                const currentPrice = holding.quantity > 0 ? holding.currentValue / holding.quantity : holding.avgCost;
+                const pnl = holding.currentValue - holding.invested;
+                const pnlPercent = holding.invested > 0 ? ((pnl / holding.invested) * 100).toFixed(2) : 0;
+                
+                let action, shares, amount;
+                
+                if (Math.abs(difference) < 100) {
+                    action = 'HOLD';
+                    shares = 0;
+                    amount = 0;
+                } else if (difference > 0) {
+                    action = 'BUY';
+                    amount = difference;
+                    shares = currentPrice > 0 ? Math.ceil(difference / currentPrice) : 0;
+                } else {
+                    action = 'SELL';
+                    amount = Math.abs(difference);
+                    shares = currentPrice > 0 ? Math.floor(Math.abs(difference) / currentPrice) : 0;
+                }
+
+                return {
+                    ...holding,
+                    targetInvestment: targetPerStock,
+                    difference: difference,
+                    action: action,
+                    shares: shares,
+                    amount: amount,
+                    currentPrice: currentPrice,
+                    pnl: pnl,
+                    pnlPercent: pnlPercent
+                };
+            });
+
+            return {
+                holdings: actions,
+                totalInvested: totalInvested,
+                totalCurrentValue: totalCurrentValue,
+                targetPerStock: targetPerStock,
+                stockCount: stocks.length
+            };
+        }
+
+        function createSetHTML(setName, setData) {
+            const pnl = setData.totalCurrentValue - setData.totalInvested;
+            const pnlPercent = setData.totalInvested > 0 ? 
+                ((pnl / setData.totalInvested) * 100).toFixed(2) : 0;
+
+            let html = `
+                <div class="set-container">
+                    <div class="set-header">${setName}</div>
+                    <div class="summary">
+                        <div class="summary-row">
+                            <span class="summary-label">Total Invested:</span>
+                            <span class="summary-value">₹${setData.totalInvested.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">Current Value:</span>
+                            <span class="summary-value">₹${setData.totalCurrentValue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </div>
+                        <div class="summary-row">
+                            <span class="summary-label">P&L:</span>
+                            <span class="summary-value ${pnl >= 0 ? 'positive' : 'negative'}">
+                                ₹${pnl.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})} 
+                                (${pnlPercent >= 0 ? '+' : ''}${pnlPercent}%)
+                            </span>
+                        </div>
+                        <div class="summary-row total">
+                            <span class="summary-label">Target Per Stock:</span>
+                            <span class="summary-value">₹${setData.targetPerStock.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                        </div>
+                    </div>
+
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Stock</th>
+                                <th>Qty</th>
+                                <th>Invested</th>
+                                <th>Current Value</th>
+                                <th>P&L</th>
+                                <th>Target</th>
+                                <th>Difference</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            setData.holdings.forEach(holding => {
+                html += `
+                    <tr>
+                        <td class="stock-name">${holding.name}</td>
+                        <td>${holding.quantity}</td>
+                        <td>₹${holding.invested.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td>₹${holding.currentValue.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="${holding.pnl >= 0 ? 'positive' : 'negative'}">
+                            ${holding.pnl >= 0 ? '+' : ''}₹${holding.pnl.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                            <br><small>(${holding.pnlPercent >= 0 ? '+' : ''}${holding.pnlPercent}%)</small>
+                        </td>
+                        <td>₹${holding.targetInvestment.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}</td>
+                        <td class="${holding.difference >= 0 ? 'positive' : 'negative'}">
+                            ${holding.difference >= 0 ? '+' : ''}₹${holding.difference.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                        </td>
+                    </tr>
+                `;
+            });
+
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            return html;
+        }
+
+        function saveToStorage() {
+            const dataToSave = {
+                portfolioData: portfolioData,
+                timestamp: new Date().toISOString()
+            };
+            const savedData = {};
+            for (const key in dataToSave) {
+                savedData[key] = dataToSave[key];
+            }
+            sessionStorage.setItem('zerodhaPortfolio', JSON.stringify(savedData));
+        }
+
+        function loadCachedData() {
+            const cached = sessionStorage.getItem('zerodhaPortfolio');
+            if (cached) {
+                try {
+                    const data = JSON.parse(cached);
+                    portfolioData = data.portfolioData;
+                    displayResults();
+                    document.getElementById('fileName').textContent = 
+                        `✓ Loaded from cache (${new Date(data.timestamp).toLocaleString()})`;
+                } catch (e) {
+                    console.error('Error loading cached data:', e);
+                }
+            }
+        }
+
+        function clearData() {
+            sessionStorage.removeItem('zerodhaPortfolio');
+            portfolioData = {};
+            document.getElementById('results').classList.remove('active');
+            document.getElementById('fileName').textContent = '';
+            fileInput.value = '';
+        }
+    </script>
+</body>
+</html>
