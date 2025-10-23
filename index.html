@@ -693,11 +693,11 @@
             for (const key in dataToSave) {
                 savedData[key] = dataToSave[key];
             }
-            sessionStorage.setItem('zerodhaPortfolio', JSON.stringify(savedData));
+            localStorage.setItem('zerodhaPortfolio', JSON.stringify(savedData));
         }
 
         function loadCachedData() {
-            const cached = sessionStorage.getItem('zerodhaPortfolio');
+            const cached = localStorage.getItem('zerodhaPortfolio');
             if (cached) {
                 try {
                     const data = JSON.parse(cached);
@@ -712,7 +712,7 @@
         }
 
         function clearData() {
-            sessionStorage.removeItem('zerodhaPortfolio');
+            localStorage.removeItem('zerodhaPortfolio');
             portfolioData = {};
             document.getElementById('results').classList.remove('active');
             document.getElementById('fileName').textContent = '';
