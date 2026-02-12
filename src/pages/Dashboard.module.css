@@ -1,0 +1,175 @@
+.wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  color: var(--color-text-secondary);
+}
+
+.demoBanner {
+  background: rgba(0, 122, 255, 0.08);
+  border: 1px solid rgba(0, 122, 255, 0.25);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.demoBannerText {
+  font-size: 0.9375rem;
+  color: var(--color-text);
+  line-height: 1.5;
+  margin: 0;
+  flex: 1;
+  min-width: 200px;
+}
+
+.demoBannerCta {
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  padding: 10px 18px;
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.demoBannerCta:hover {
+  background: var(--color-primary-hover);
+}
+
+.errorBanner {
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: var(--color-negative);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dismissError {
+  font-size: 1.25rem;
+  color: inherit;
+  padding: 4px 8px;
+  min-width: 36px;
+  min-height: 36px;
+}
+
+.footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.lastUpdated {
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+}
+
+.clearBtn {
+  padding: 10px 18px;
+  background: transparent;
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+}
+
+.clearBtn:hover {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text);
+}
+
+.mergeOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.mergeCard {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 360px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+}
+
+.mergeTitle {
+  font-size: 1rem;
+  color: var(--color-text);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.mergeActions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mergePrimary {
+  background: var(--color-primary);
+  color: white;
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.mergePrimary:hover {
+  background: var(--color-primary-hover);
+}
+
+.mergeSecondary {
+  background: transparent;
+  color: var(--color-text-secondary);
+  padding: 12px 16px;
+  border-radius: var(--radius);
+  font-size: 1rem;
+  border: 1px solid var(--color-border);
+}
+
+.mergeSecondary:hover {
+  border-color: var(--color-text-secondary);
+  color: var(--color-text);
+}
+
+@media (max-width: 768px) {
+  .main {
+    padding: 16px 12px 32px;
+  }
+}

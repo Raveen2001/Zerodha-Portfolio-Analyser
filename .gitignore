@@ -1,0 +1,4 @@
+.env.local
+dist/
+**/.temp/
+node_modules/

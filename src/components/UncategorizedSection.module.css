@@ -1,0 +1,203 @@
+.card {
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: 24px;
+  margin-bottom: 24px;
+  margin-top: 0;
+}
+
+.heading {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-bottom: 4px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--color-border);
+}
+
+.hint {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 16px;
+}
+
+.summary {
+  background: var(--color-bg);
+  padding: 16px;
+  border-radius: var(--radius);
+  margin-bottom: 20px;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 0;
+  font-size: 0.9375rem;
+}
+
+.label {
+  color: var(--color-text-secondary);
+}
+
+.value {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.positive {
+  color: var(--color-positive);
+  font-weight: 600;
+}
+
+.negative {
+  color: var(--color-negative);
+  font-weight: 600;
+}
+
+.bulkBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(0, 113, 227, 0.08);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+
+.bulkLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.select {
+  padding: 8px 12px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  background: var(--color-surface);
+}
+
+.bulkBtn {
+  padding: 8px 14px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.bulkBtn:hover {
+  border-color: var(--color-text-secondary);
+}
+
+.bulkBtnPrimary {
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  background: var(--color-primary);
+  color: white;
+}
+
+.bulkBtnPrimary:hover {
+  background: var(--color-primary-hover);
+}
+
+.tableWrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-weight: 600;
+  padding: 12px 10px;
+  text-align: left;
+}
+
+.table td {
+  padding: 10px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.table tbody tr:hover {
+  background: var(--color-bg);
+}
+
+.thCheck,
+.tdCheck {
+  width: 44px;
+  text-align: center;
+}
+
+.thAction,
+.tdAction {
+  min-width: 120px;
+}
+
+.checkbox {
+  width: 18px;
+  height: 18px;
+}
+
+.stockName {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.addSelect {
+  padding: 6px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  font-size: 0.8125rem;
+  background: var(--color-surface);
+  min-width: 100px;
+}
+
+.addSelect:focus {
+  outline: none;
+  border-color: var(--color-primary);
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: 16px;
+  }
+
+  .table {
+    font-size: 0.8125rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 8px 6px;
+    min-width: 70px;
+  }
+
+  .table th:first-child,
+  .table td:first-child {
+    position: sticky;
+    left: 0;
+    background: var(--color-surface);
+    z-index: 1;
+  }
+
+  .table th:first-child {
+    background: var(--color-bg);
+  }
+
+  .bulkBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
