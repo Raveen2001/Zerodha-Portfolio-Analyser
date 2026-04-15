@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { Reorder } from "framer-motion";
 import { useApp } from "../context/AppContext";
 import { analyzeSet } from "../analysis";
 import type { PortfolioData, StockSet } from "../types";
@@ -97,23 +98,29 @@ function useSummary(portfolio: PortfolioData | null, sets: StockSet[]) {
 }
 
 export function SummaryInsights() {
-  const { portfolio, sets } = useApp();
+  const { portfolio, sets, setSets } = useApp();
   const summary = useSummary(portfolio, sets);
 
   if (!portfolio || Object.keys(portfolio).length === 0) return null;
 
-  const { setCards, uncategorized: uncatSummary, portfolio: portSummary } = summary;
+  const {
+    setCards,
+    uncategorized: uncatSummary,
+    portfolio: portSummary,
+  } = summary;
 
   if (!portSummary) return null;
 
   return (
     <section className={styles.section} aria-label="Summary insights">
       <div className={styles.grid}>
+        {/* Portfolio — always pinned first, not draggable */}
         <div className={styles.card}>
           <span className={styles.label}>Portfolio</span>
           <span className={styles.value}>{portSummary.count} stocks</span>
           <span className={styles.sub}>
-            {formatMoney(portSummary.invested)} → {formatMoney(portSummary.value)}
+            {formatMoney(portSummary.invested)} →{" "}
+            {formatMoney(portSummary.value)}
           </span>
           <span
             className={
@@ -124,27 +131,55 @@ export function SummaryInsights() {
             {formatMoney(portSummary.pnl)} ({portSummary.pnlPercent}%)
           </span>
         </div>
-        {setCards.map((s) => (
-          <div key={s.id} className={styles.card}>
-            <span className={styles.label}>{s.name}</span>
-            <span className={styles.value}>{s.stockCount} stocks</span>
-            <span className={styles.sub}>
-              {formatMoney(s.invested)} → {formatMoney(s.value)}
-            </span>
-            <span
-              className={s.pnl >= 0 ? styles.positive : styles.negative}
+
+        {/* Set cards — in their own non-wrapping flex group so axis="x"
+            reordering always works in a single row */}
+        <Reorder.Group
+          as="div"
+          axis="x"
+          values={sets}
+          onReorder={setSets}
+          className={styles.setGroup}
+        >
+          {setCards.map((s, i) => (
+            <Reorder.Item
+              as="div"
+              key={s.id}
+              value={sets[i]}
+              className={`${styles.card} ${styles.draggableCard}`}
+              whileDrag={{
+                scale: 1.04,
+                boxShadow: "0 8px 28px rgba(0,0,0,0.14)",
+                zIndex: 10,
+              }}
+              title="Drag to reorder"
             >
-              {s.pnl >= 0 ? "+" : ""}
-              {formatMoney(s.pnl)} ({s.pnlPercent}%)
-            </span>
-          </div>
-        ))}
+              <span className={styles.dragHint} aria-hidden>
+                ⠿
+              </span>
+              <span className={styles.label}>{s.name}</span>
+              <span className={styles.value}>{s.stockCount} stocks</span>
+              <span className={styles.sub}>
+                {formatMoney(s.invested)} → {formatMoney(s.value)}
+              </span>
+              <span
+                className={s.pnl >= 0 ? styles.positive : styles.negative}
+              >
+                {s.pnl >= 0 ? "+" : ""}
+                {formatMoney(s.pnl)} ({s.pnlPercent}%)
+              </span>
+            </Reorder.Item>
+          ))}
+        </Reorder.Group>
+
+        {/* Uncategorized — always pinned last, not draggable */}
         {uncatSummary && (
           <div className={styles.card}>
             <span className={styles.label}>Uncategorized</span>
             <span className={styles.value}>{uncatSummary.count} stocks</span>
             <span className={styles.sub}>
-              {formatMoney(uncatSummary.invested)} → {formatMoney(uncatSummary.value)}
+              {formatMoney(uncatSummary.invested)} →{" "}
+              {formatMoney(uncatSummary.value)}
             </span>
             <span
               className={

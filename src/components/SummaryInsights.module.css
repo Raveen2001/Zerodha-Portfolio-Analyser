@@ -2,16 +2,36 @@
   margin-bottom: 24px;
 }
 
+/* Outer row: all cards in a single non-wrapping strip so that
+   framer-motion axis="x" reordering works correctly at any screen width */
 .grid {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
+  flex-wrap: nowrap;
+  gap: 12px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  /* hide scrollbar on WebKit but still scrollable */
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
 }
 
+.grid::-webkit-scrollbar {
+  height: 4px;
+}
+
+.grid::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.grid::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
+}
+
+/* Static cards (Portfolio, Uncategorized) */
 .card {
-  flex: 1 1 160px;
-  min-width: 0;
-  max-width: 100%;
+  flex: 0 0 auto;
+  width: 200px;
   background: var(--color-surface);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
@@ -20,6 +40,15 @@
   flex-direction: column;
   gap: 4px;
   border: 1px solid var(--color-border);
+}
+
+/* The Reorder.Group wrapper for set cards — a proper box (not display:contents)
+   so framer-motion can track positions against it */
+.setGroup {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .label {
@@ -53,8 +82,31 @@
   color: var(--color-negative);
 }
 
-@media (max-width: 480px) {
-  .card {
-    flex: 1 1 100%;
-  }
+/* Draggable set summary cards */
+.draggableCard {
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  transition: border-color 0.15s;
+}
+
+.draggableCard:hover {
+  border-color: rgba(0, 113, 227, 0.3);
+}
+
+.draggableCard:active {
+  cursor: grabbing;
+}
+
+.dragHint {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  opacity: 0.4;
+  line-height: 1;
+  margin-bottom: -2px;
+  display: block;
+}
+
+.draggableCard:hover .dragHint {
+  opacity: 0.7;
 }

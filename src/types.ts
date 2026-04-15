@@ -51,3 +51,22 @@ export interface GuestStorage {
   sets: StockSet[];
   timestamp: string;
 }
+
+/** A single data point in a portfolio or set timeline */
+export interface TimelinePoint {
+  date: string;
+  totalInvested: number;
+  totalValue: number;
+  pnl: number;
+  pnlPercent: number;
+}
+
+/** A single data point in a stock-level timeline */
+export interface StockTimelinePoint {
+  date: string;
+  invested: number;
+  value: number;
+  pnl: number;
+  pnlPercent: number;
+  quantity: number;
+}

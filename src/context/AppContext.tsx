@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
@@ -66,6 +67,7 @@ const AppContext = createContext<AppContextValue | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AppState>(defaultState);
+  const lastSessionUserIdRef = useRef<string | null>(null);
 
   const loadGuest = useCallback(() => {
     const stored = loadGuestStorage();
@@ -103,7 +105,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const loadLoggedIn = useCallback(async (user: User) => {
-    setState((s) => ({ ...s, loading: true, error: null }));
+    const previousUserId = lastSessionUserIdRef.current;
+    lastSessionUserIdRef.current = user.id;
+    if (previousUserId === user.id) {
+      // Same user (e.g. refresh or merge); avoid flashing loading
+    } else {
+      setState((s) => ({ ...s, loading: true, error: null }));
+    }
     try {
       const [portfolio, sets, uploadedAt] = await Promise.all([
         loadSupabasePortfolio(user.id),
@@ -137,8 +145,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
+        if (lastSessionUserIdRef.current === session.user.id) return;
         loadLoggedIn(session.user);
       } else {
+        if (lastSessionUserIdRef.current === null) return;
+        lastSessionUserIdRef.current = null;
         loadGuest();
       }
     });
@@ -146,6 +157,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (session?.user) {
         loadLoggedIn(session.user);
       } else {
+        lastSessionUserIdRef.current = null;
         loadGuest();
       }
     });

@@ -78,35 +78,6 @@
   min-height: 36px;
 }
 
-.footer {
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid var(--color-border);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.lastUpdated {
-  font-size: 0.875rem;
-  color: var(--color-text-secondary);
-}
-
-.clearBtn {
-  padding: 10px 18px;
-  background: transparent;
-  color: var(--color-text-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  font-size: 0.9375rem;
-}
-
-.clearBtn:hover {
-  border-color: var(--color-text-secondary);
-  color: var(--color-text);
-}
 
 .mergeOverlay {
   position: fixed;

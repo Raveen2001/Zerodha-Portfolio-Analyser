@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useApp } from "../context/AppContext";
-import { loadGuestStorage } from "../lib/storage";
 import { Header } from "../components/Header";
-import { UploadArea } from "../components/UploadArea";
 import { SetList } from "../components/SetList";
 import { SummaryInsights } from "../components/SummaryInsights";
+import { UploadArea } from "../components/UploadArea";
+import { useApp } from "../context/AppContext";
+import { loadGuestStorage } from "../lib/storage";
 import styles from "./Dashboard.module.css";
 
 export function Dashboard() {
@@ -15,8 +15,6 @@ export function Dashboard() {
     loading,
     mode,
     portfolio,
-    portfolioUploadedAt,
-    clearData,
     error,
     clearError,
     loadDemo,
@@ -93,23 +91,6 @@ export function Dashboard() {
         )}
         {portfolio && Object.keys(portfolio).length > 0 && <SummaryInsights />}
         <SetList />
-        {portfolio && Object.keys(portfolio).length > 0 && mode !== "demo" && (
-          <div className={styles.footer}>
-            <p className={styles.lastUpdated}>
-              Last updated:{" "}
-              {portfolioUploadedAt
-                ? new Date(portfolioUploadedAt).toLocaleString()
-                : "—"}
-            </p>
-            <button
-              type="button"
-              className={styles.clearBtn}
-              onClick={clearData}
-            >
-              Clear data & upload new
-            </button>
-          </div>
-        )}
       </main>
 
       {mergeOffer && (

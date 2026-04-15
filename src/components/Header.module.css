@@ -1,23 +1,38 @@
+/* ── Header shell ───────────────────────────────────────────── */
 .header {
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
-  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.82);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.07), 0 2px 16px rgba(0, 0, 0, 0.04);
+  padding: 0 20px;
+  height: 56px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
   position: sticky;
   top: 0;
   z-index: 100;
 }
 
+/* ── Left: logo + demo badge ────────────────────────────────── */
+.left {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .logo {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   font-weight: 600;
-  font-size: 1rem;
+  font-size: 0.9375rem;
   color: var(--color-text);
   text-decoration: none;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .logo:hover {
@@ -40,29 +55,60 @@
   }
 }
 
-.menuBtn {
-  display: none;
-  flex-direction: column;
-  gap: 5px;
-  padding: 8px;
-  min-width: 44px;
-  min-height: 44px;
+.demoBadge {
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--color-primary);
+  padding: 2px 8px;
+  border-radius: 20px;
+  flex-shrink: 0;
 }
 
-.menuIcon {
-  width: 20px;
-  height: 2px;
-  background: var(--color-text);
-  border-radius: 1px;
-}
-
-.nav {
+/* ── Center: pill nav ───────────────────────────────────────── */
+.pillNav {
   display: flex;
   align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+  background: var(--color-bg);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.pill {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  padding: 5px 14px;
+  border-radius: 7px;
+  min-height: unset;
+  min-width: unset;
+  white-space: nowrap;
+  transition: color 0.12s;
+}
+
+.pill:hover {
+  color: var(--color-text);
+}
+
+.pillActive {
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* ── Right: icon buttons + avatar ───────────────────────────── */
+.right {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
 }
 
 .hiddenInput {
@@ -73,152 +119,211 @@
   pointer-events: none;
 }
 
-.ctaBtn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  background: transparent;
-  color: var(--color-primary);
-  padding: 10px 18px;
-  border: 1px solid var(--color-primary);
-  border-radius: var(--radius);
-  font-size: 0.9375rem;
-  font-weight: 500;
-  min-height: 44px;
-  white-space: nowrap;
-}
-
-.ctaBtn:hover {
-  background: rgba(0, 113, 227, 0.06);
-}
-
-.ctaIcon {
-  flex-shrink: 0;
-}
-
-.uploadError {
-  font-size: 0.8125rem;
-  color: var(--color-negative);
-  max-width: 160px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.navLink {
-  font-size: 0.9375rem;
-  color: var(--color-primary);
-  padding: 8px 12px;
-  min-height: 44px;
-  min-width: auto;
-}
-
-.navLink:hover {
-  text-decoration: none;
-}
-
-.profileWrap {
-  position: relative;
-}
-
-.profileBtn {
+/* Upload icon-only circle */
+.iconBtn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   border-radius: 50%;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
+  color: var(--color-text-secondary);
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.iconBtn:hover {
+  background: var(--color-bg);
+  border-color: rgba(0, 0, 0, 0.18);
   color: var(--color-text);
 }
 
-.profileBtn:hover {
-  background: var(--color-bg);
-  border-color: var(--color-text-secondary);
+/* CTA button: Login to sync / Create account */
+.ctaBtn {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  background: var(--color-primary);
+  padding: 7px 14px;
+  border-radius: 8px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+
+.ctaBtn:hover {
+  background: var(--color-primary-hover);
+}
+
+.ctaBtnShort {
+  display: none;
+}
+
+.ctaBtnFull {
+  display: inline;
+}
+
+/* Upload error text */
+.uploadError {
+  font-size: 0.8125rem;
+  color: var(--color-negative);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Avatar button ──────────────────────────────────────────── */
+.profileWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatarBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: 0.875rem;
+  font-weight: 700;
+  flex-shrink: 0;
+  transition: border-color 0.12s, background 0.12s;
+}
+
+.avatarBtn:hover {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Filled avatar (user is logged in) */
+.avatarFilled {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.avatarFilled:hover {
+  background: var(--color-primary-hover);
+  border-color: var(--color-primary-hover);
 }
 
 .profileIcon {
   flex-shrink: 0;
 }
 
+/* ── Profile dropdown ────────────────────────────────────────── */
 .profileDropdown {
   position: absolute;
-  top: 100%;
+  top: calc(100% + 8px);
   right: 0;
-  margin-top: 8px;
-  min-width: 200px;
-  padding: 8px 0;
+  min-width: 220px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.05);
   z-index: 50;
+  overflow: hidden;
+  padding: 6px 0;
 }
 
 .profileEmail {
   font-size: 0.8125rem;
-  color: var(--color-text-secondary);
-  padding: 10px 14px;
-  border-bottom: 1px solid var(--color-border);
+  font-weight: 500;
+  color: var(--color-text);
+  padding: 10px 16px 2px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+.profileMeta {
+  font-size: 0.75rem;
+  color: var(--color-text-secondary);
+  padding: 2px 16px 8px;
+}
+
+.profileDivider {
+  height: 1px;
+  background: var(--color-border);
+  margin: 4px 0;
+}
+
 .profileItem {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   width: 100%;
-  padding: 10px 14px;
+  padding: 10px 16px;
   font-size: 0.9375rem;
-  color: var(--color-primary);
+  color: var(--color-text);
   text-align: left;
+  min-height: unset;
+  min-width: unset;
+  transition: background 0.1s;
 }
 
 .profileItem:hover {
   background: var(--color-bg);
 }
 
-.badge {
-  font-size: 0.75rem;
-  padding: 4px 8px;
-  background: var(--color-bg);
+.profileItemIcon {
+  flex-shrink: 0;
   color: var(--color-text-secondary);
-  border-radius: 6px;
 }
 
-@media (max-width: 768px) {
-  .menuBtn {
-    display: flex;
+.profileItemDanger {
+  color: var(--color-negative);
+}
+
+.profileItemDanger:hover {
+  background: rgba(255, 59, 48, 0.06);
+}
+
+/* ── Responsive ──────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .header {
+    padding: 0 14px;
+    gap: 8px;
   }
 
-  .nav {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    background: var(--color-surface);
-    border-bottom: 1px solid var(--color-border);
-    flex-direction: column;
-    padding: 16px;
-    align-items: stretch;
+  .pill {
+    font-size: 0.8125rem;
+    padding: 5px 10px;
+  }
+
+  .ctaBtnFull {
     display: none;
   }
 
-  .navOpen {
-    display: flex;
+  .ctaBtnShort {
+    display: inline;
   }
 
-  .navLink {
-    justify-content: center;
+  .ctaBtn {
+    padding: 7px 12px;
   }
 
-  .profileWrap {
-    align-self: flex-start;
+  .right {
+    gap: 6px;
   }
 
-  .profileDropdown {
-    right: 0;
-    left: 0;
-    min-width: auto;
+  .uploadError {
+    display: none;
+  }
+}
+
+@media (max-width: 360px) {
+  .pillNav {
+    display: none;
   }
 }

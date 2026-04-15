@@ -1,4 +1,4 @@
-import type { PortfolioData, StockSet, GuestStorage } from "../types";
+import type { PortfolioData, StockSet, GuestStorage, PortfolioSnapshot } from "../types";
 import { supabase } from "./supabase";
 
 const GUEST_STORAGE_KEY = "zerodhaPortfolio_guest";
@@ -126,6 +126,22 @@ export async function saveSupabaseSets(
   }));
   const { error } = await supabase.from("sets").insert(rows);
   return !error;
+}
+
+export async function loadAllSnapshots(
+  userId: string
+): Promise<PortfolioSnapshot[]> {
+  if (!supabase) return [];
+  const { data, error } = await supabase
+    .from("portfolio_snapshots")
+    .select("uploaded_at, holdings")
+    .eq("user_id", userId)
+    .order("uploaded_at", { ascending: true });
+  if (error || !data) return [];
+  return data.map((row: { uploaded_at: string; holdings: PortfolioData }) => ({
+    uploadedAt: row.uploaded_at,
+    holdings: row.holdings as PortfolioData,
+  }));
 }
 
 export async function getPortfolioUploadedAt(

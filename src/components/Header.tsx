@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useApp } from "../context/AppContext";
 import { supabase } from "../lib/supabase";
 import { parseHoldingsFile } from "../lib/csv";
@@ -9,15 +9,26 @@ import styles from "./Header.module.css";
 
 export function Header() {
   const navigate = useNavigate();
-  const { user, mode, portfolio, setPortfolio } = useApp();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const location = useLocation();
+  const {
+    user,
+    mode,
+    portfolio,
+    portfolioUploadedAt,
+    setPortfolio,
+    clearData,
+  } = useApp();
   const [profileOpen, setProfileOpen] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
 
   const hasPortfolio = portfolio && Object.keys(portfolio).length > 0;
-  const showProfile = mode === "guest" || user;
+  const isLoggedIn = mode === "logged_in" && !!user;
+  const isDemo = mode === "demo";
+  const isGuest = mode === "guest";
+  const showProfile = isGuest || !!user;
+  const showPillNav = hasPortfolio && isLoggedIn;
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -46,7 +57,7 @@ export function Header() {
       .then((data) => {
         setPortfolio(data);
         setUploadError(null);
-        setMenuOpen(false);
+        setProfileOpen(false);
       })
       .catch((err) => {
         setUploadError(err instanceof Error ? err.message : "Upload failed");
@@ -55,134 +66,200 @@ export function Header() {
 
   const handleSignOut = async () => {
     if (supabase) await supabase.auth.signOut();
-    setMenuOpen(false);
     setProfileOpen(false);
     navigate("/");
   };
 
   const handleLogin = () => {
-    setMenuOpen(false);
+    setProfileOpen(false);
     navigate("/");
   };
 
+  const handleClearData = () => {
+    clearData();
+    setProfileOpen(false);
+  };
+
+  const logoHref =
+    user || (isGuest && hasPortfolio) || isDemo
+      ? isDemo
+        ? "/demo"
+        : "/app"
+      : "/";
+
+  const avatarInitial = user?.email ? user.email[0].toUpperCase() : null;
+
+  const lastUpdated = portfolioUploadedAt
+    ? new Date(portfolioUploadedAt).toLocaleDateString("en-IN", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
+  const isOnHistory = location.pathname === "/app/history";
+
   return (
-    <>
-      <header className={styles.header}>
-        <Link
-          to={
-            user || (mode === "guest" && hasPortfolio) || mode === "demo"
-              ? mode === "demo"
-                ? "/demo"
-                : "/app"
-              : "/"
-          }
-          className={styles.logo}
-        >
+    <header className={styles.header}>
+      {/* Left: logo + demo badge */}
+      <div className={styles.left}>
+        <Link to={logoHref} className={styles.logo}>
           <img
             src="/logo.svg"
             alt=""
-            width={28}
-            height={28}
+            width={26}
+            height={26}
             className={styles.logoImg}
           />
-          <span className={styles.logoText}>Zerodha Portfolio Analyzer</span>
+          <span className={styles.logoText}>Portfolio Analyzer</span>
         </Link>
-        <button
-          type="button"
-          className={styles.menuBtn}
-          onClick={() => setMenuOpen(!menuOpen)}
-          aria-label={menuOpen ? "Close menu" : "Open menu"}
-          aria-expanded={menuOpen ? "true" : "false"}
-        >
-          <span className={styles.menuIcon} />
-          <span className={styles.menuIcon} />
-          <span className={styles.menuIcon} />
-        </button>
-        <nav className={`${styles.nav} ${menuOpen ? styles.navOpen : ""}`}>
-          {hasPortfolio && mode !== "demo" && (
-            <>
-              <input
-                ref={uploadInputRef}
-                type="file"
-                accept=".csv"
-                className={styles.hiddenInput}
-                onChange={handleUploadChange}
-                aria-label="Upload Zerodha holdings CSV"
-                title="Upload Zerodha holdings CSV"
-              />
-              <button
-                type="button"
-                className={styles.ctaBtn}
-                onClick={handleUploadClick}
-              >
-                <UploadIcon className={styles.ctaIcon} />
-                Upload holdings
-              </button>
-              {uploadError && (
-                <span className={styles.uploadError} role="alert">
-                  {uploadError}
-                </span>
-              )}
-            </>
-          )}
-          {mode === "demo" && (
-            <>
-              <span className={styles.badge}>Demo</span>
-              {supabase && (
-                <button
-                  type="button"
-                  className={styles.navLink}
-                  onClick={() => {
-                    setMenuOpen(false);
-                    navigate("/", { state: { tab: "signup" } });
-                  }}
-                >
-                  Create account
-                </button>
-              )}
-            </>
-          )}
-          {mode === "guest" && supabase && (
+        {isDemo && <span className={styles.demoBadge}>Demo</span>}
+      </div>
+
+      {/* Center: pill nav (logged-in with portfolio only) */}
+      {showPillNav && (
+        <nav className={styles.pillNav} aria-label="Page navigation">
+          <button
+            type="button"
+            className={`${styles.pill} ${!isOnHistory ? styles.pillActive : ""}`}
+            onClick={() => navigate("/app")}
+          >
+            Dashboard
+          </button>
+          <button
+            type="button"
+            className={`${styles.pill} ${isOnHistory ? styles.pillActive : ""}`}
+            onClick={() => navigate("/app/history")}
+          >
+            History
+          </button>
+        </nav>
+      )}
+
+      {/* Right: actions */}
+      <div className={styles.right}>
+        {/* Hidden file input */}
+        <input
+          ref={uploadInputRef}
+          type="file"
+          accept=".csv"
+          className={styles.hiddenInput}
+          onChange={handleUploadChange}
+          aria-label="Upload Zerodha holdings CSV"
+          title="Upload Zerodha holdings CSV"
+        />
+
+        {uploadError && (
+          <span className={styles.uploadError} role="alert">
+            {uploadError}
+          </span>
+        )}
+
+        {/* Upload icon button (non-demo, portfolio loaded) */}
+        {hasPortfolio && !isDemo && (
+          <button
+            type="button"
+            className={styles.iconBtn}
+            onClick={handleUploadClick}
+            title="Upload new holdings CSV"
+            aria-label="Upload new holdings CSV"
+          >
+            <UploadIcon />
+          </button>
+        )}
+
+        {/* Guest: Login to sync */}
+        {isGuest && supabase && (
+          <button
+            type="button"
+            className={styles.ctaBtn}
+            onClick={handleLogin}
+          >
+            <span className={styles.ctaBtnFull}>Login to sync</span>
+            <span className={styles.ctaBtnShort}>Login</span>
+          </button>
+        )}
+
+        {/* Demo: Create account */}
+        {isDemo && supabase && (
+          <button
+            type="button"
+            className={styles.ctaBtn}
+            onClick={() => navigate("/", { state: { tab: "signup" } })}
+          >
+            <span className={styles.ctaBtnFull}>Create account</span>
+            <span className={styles.ctaBtnShort}>Sign up</span>
+          </button>
+        )}
+
+        {/* Avatar / profile */}
+        {showProfile && (
+          <div className={styles.profileWrap} ref={profileRef}>
             <button
               type="button"
-              className={styles.navLink}
-              onClick={handleLogin}
+              className={`${styles.avatarBtn} ${avatarInitial ? styles.avatarFilled : ""}`}
+              onClick={() => setProfileOpen(!profileOpen)}
+              aria-label="Profile menu"
+              aria-expanded={profileOpen ? "true" : "false"}
+              aria-haspopup="true"
             >
-              Login to sync
+              {avatarInitial ?? <ProfileIcon className={styles.profileIcon} />}
             </button>
-          )}
-          {showProfile && (
-            <div className={styles.profileWrap} ref={profileRef}>
-              <button
-                type="button"
-                className={styles.profileBtn}
-                onClick={() => setProfileOpen(!profileOpen)}
-                aria-label="Profile menu"
-                aria-expanded={profileOpen ? "true" : "false"}
-                aria-haspopup="true"
-              >
-                <ProfileIcon className={styles.profileIcon} />
-              </button>
-              {profileOpen && (
-                <div className={styles.profileDropdown}>
-                  {user && (
-                    <div className={styles.profileEmail}>
-                      {user.email ?? "Signed in"}
-                    </div>
-                  )}
+
+            {profileOpen && (
+              <div className={styles.profileDropdown}>
+                {user && (
+                  <div className={styles.profileEmail}>
+                    {user.email ?? "Signed in"}
+                  </div>
+                )}
+                {lastUpdated && (
+                  <div className={styles.profileMeta}>
+                    Last updated: {lastUpdated}
+                  </div>
+                )}
+                {(user || lastUpdated) && (
+                  <div className={styles.profileDivider} />
+                )}
+
+                {hasPortfolio && !isDemo && (
                   <button
                     type="button"
                     className={styles.profileItem}
-                    onClick={handleSignOut}
+                    onClick={() => {
+                      setProfileOpen(false);
+                      handleUploadClick();
+                    }}
                   >
-                    {user ? "Sign out" : "Back to home"}
+                    <UploadIcon className={styles.profileItemIcon} />
+                    Upload new CSV
                   </button>
-                </div>
-              )}
-            </div>
-          )}
-        </nav>
-      </header>
-    </>
+                )}
+
+                {hasPortfolio && (
+                  <button
+                    type="button"
+                    className={`${styles.profileItem} ${styles.profileItemDanger}`}
+                    onClick={handleClearData}
+                  >
+                    Clear data
+                  </button>
+                )}
+
+                {hasPortfolio && <div className={styles.profileDivider} />}
+
+                <button
+                  type="button"
+                  className={styles.profileItem}
+                  onClick={user ? handleSignOut : handleLogin}
+                >
+                  {user ? "Sign out" : "Back to home"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </header>
   );
 }
