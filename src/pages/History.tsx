@@ -17,6 +17,7 @@ import { useApp } from "../context/AppContext";
 import {
   computePortfolioTimeline,
   computeSetTimelines,
+  computeSetStockTimelines,
   computeStockTimeline,
   getAllStockSymbols,
 } from "../historyAnalysis";
@@ -177,6 +178,7 @@ export function History() {
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [loadingSnapshots, setLoadingSnapshots] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("portfolio");
+  const [selectedSetIds, setSelectedSetIds] = useState<Set<string>>(new Set());
   const [selectedStock, setSelectedStock] = useState<string>("");
   const [stockSearch, setStockSearch] = useState("");
   const [stockDropdownOpen, setStockDropdownOpen] = useState(false);
@@ -214,6 +216,41 @@ export function History() {
     () => computeSetTimelines(snapshots, sets),
     [snapshots, sets]
   );
+
+  useEffect(() => {
+    if (sets.length > 0 && selectedSetIds.size === 0) {
+      setSelectedSetIds(new Set(sets.map((s) => s.id)));
+    }
+  }, [sets]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const toggleSet = useCallback((setId: string) => {
+    setSelectedSetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(setId)) next.delete(setId);
+      else next.add(setId);
+      return next;
+    });
+  }, []);
+
+  const selectAllSets = useCallback(() => {
+    setSelectedSetIds(new Set(sets.map((s) => s.id)));
+  }, [sets]);
+
+  const clearAllSets = useCallback(() => {
+    setSelectedSetIds(new Set());
+  }, []);
+
+  const activeSets = useMemo(
+    () => sets.filter((s) => selectedSetIds.has(s.id)),
+    [sets, selectedSetIds]
+  );
+
+  const singleSelectedSet = activeSets.length === 1 ? activeSets[0] : null;
+
+  const singleSetStockTimelines = useMemo(() => {
+    if (!singleSelectedSet || snapshots.length === 0) return null;
+    return computeSetStockTimelines(snapshots, singleSelectedSet);
+  }, [snapshots, singleSelectedSet]);
 
   const stockSymbols = useMemo(
     () => getAllStockSymbols(snapshots),
@@ -637,175 +674,553 @@ export function History() {
               </div>
             ) : (
               <>
-                <div className={styles.setLegend}>
-                  {sets.map((set, i) => (
-                    <span key={set.id} className={styles.setLegendItem}>
-                      <span
-                        className={styles.setDot}
-                        style={{ background: SET_COLORS[i % SET_COLORS.length] }}
-                      />
-                      {set.name}
-                    </span>
-                  ))}
-                </div>
-
-                <CompareBanner
-                  data={setTimelines.get(sets[0]?.id) ?? []}
-                  sel={setCompare.sel}
-                  onClear={setCompare.clear}
-                  getValues={(idx) =>
-                    sets.map((set) => {
-                      const d = setTimelines.get(set.id) ?? [];
-                      return {
-                        label: `${set.name} P&L %`,
-                        val: d[idx]?.pnlPercent ?? 0,
-                        isCurrency: false,
-                      };
-                    })
-                  }
-                />
-
-                <div className={styles.chartCard}>
-                  <h2 className={styles.chartTitle}>Set P&L % over time</h2>
-                  <ResponsiveContainer width="100%" height={320}>
-                    <LineChart
-                      margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
-                      onClick={(state) => {
-                        const s = state as unknown as ChartClickState;
-                        if (s?.activeTooltipIndex != null)
-                          setCompare.handleClick(null, s.activeTooltipIndex);
-                      }}
-                      style={{ cursor: "crosshair" }}
+                {/* Set selector */}
+                <div className={styles.setSelectorWrap}>
+                  <span className={styles.setSelectorLabel}>Select sets to analyse</span>
+                  <div className={styles.setSelectorActions}>
+                    <button
+                      type="button"
+                      className={styles.setSelectorAction}
+                      onClick={selectAllSets}
+                      disabled={selectedSetIds.size === sets.length}
                     >
-                      <CartesianGrid
-                        strokeDasharray="3 3"
-                        stroke="rgba(0,0,0,0.07)"
-                      />
-                      <XAxis
-                        dataKey="date"
-                        allowDuplicatedCategory={false}
-                        tick={{ fontSize: 12, fill: "#6e6e73" }}
-                        tickLine={false}
-                      />
-                      <YAxis
-                        tickFormatter={(v) => `${v}%`}
-                        tick={{ fontSize: 12, fill: "#6e6e73" }}
-                        tickLine={false}
-                        axisLine={false}
-                        width={52}
-                      />
-                      <Tooltip
-                        formatter={(value: unknown, name: unknown) => [
-                          `${toNum(value).toFixed(2)}%`,
-                          String(name ?? ""),
-                        ]}
-                        contentStyle={{
-                          borderRadius: 8,
-                          border: "1px solid rgba(0,0,0,0.08)",
-                          fontSize: 13,
-                        }}
-                      />
-                      <Legend wrapperStyle={{ fontSize: 13 }} />
-                      {(() => {
-                        const firstSetData = setTimelines.get(sets[0]?.id) ?? [];
-                        if (setCompare.sel.startIdx !== null && setCompare.sel.endIdx !== null) {
-                          return (
-                            <ReferenceArea
-                              x1={firstSetData[setCompare.sel.startIdx]?.date}
-                              x2={firstSetData[setCompare.sel.endIdx]?.date}
-                              fill={refAreaColor}
-                              fillOpacity={1}
-                            />
-                          );
-                        }
-                        return null;
-                      })()}
-                      {sets.map((set, i) => {
-                        const data = setTimelines.get(set.id) ?? [];
-                        return (
-                          <Line
-                            key={set.id}
-                            data={data}
-                            dataKey="pnlPercent"
-                            name={set.name}
-                            stroke={SET_COLORS[i % SET_COLORS.length]}
-                            strokeWidth={2.5}
-                            dot={false}
-                            activeDot={{ r: 5 }}
-                            type="linear"
-                          />
-                        );
-                      })}
-                    </LineChart>
-                  </ResponsiveContainer>
+                      All
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.setSelectorAction}
+                      onClick={clearAllSets}
+                      disabled={selectedSetIds.size === 0}
+                    >
+                      None
+                    </button>
+                  </div>
                 </div>
-
-                <div className={styles.setCardsGrid}>
+                <div className={styles.setPillRow}>
                   {sets.map((set, i) => {
-                    const data = setTimelines.get(set.id) ?? [];
-                    const latest = data[data.length - 1];
-                    const first = data[0];
-                    const deltaPct =
-                      first && latest
-                        ? latest.pnlPercent - first.pnlPercent
-                        : null;
+                    const isActive = selectedSetIds.has(set.id);
                     return (
-                      <div key={set.id} className={styles.setDetailCard}>
+                      <button
+                        key={set.id}
+                        type="button"
+                        className={`${styles.setPill} ${isActive ? styles.setPillActive : ""}`}
+                        style={
+                          isActive
+                            ? { borderColor: SET_COLORS[i % SET_COLORS.length], background: `${SET_COLORS[i % SET_COLORS.length]}12` }
+                            : undefined
+                        }
+                        onClick={() => toggleSet(set.id)}
+                      >
                         <span
-                          className={styles.setDetailDot}
-                          style={{
-                            background: SET_COLORS[i % SET_COLORS.length],
-                          }}
+                          className={styles.setPillDot}
+                          style={{ background: isActive ? SET_COLORS[i % SET_COLORS.length] : "var(--color-border)" }}
                         />
-                        <p className={styles.setDetailName}>{set.name}</p>
-                        {latest && (
-                          <div className={styles.setDetailStats}>
-                            <div className={styles.setDetailStat}>
-                              <span className={styles.setDetailStatLabel}>
-                                Invested
-                              </span>
-                              <span className={styles.setDetailStatValue}>
-                                {formatCurrency(latest.totalInvested)}
-                              </span>
-                            </div>
-                            <div className={styles.setDetailStat}>
-                              <span className={styles.setDetailStatLabel}>
-                                Value
-                              </span>
-                              <span
-                                className={`${styles.setDetailStatValue} ${latest.pnl >= 0 ? styles.positive : styles.negative}`}
-                              >
-                                {formatCurrency(latest.totalValue)}
-                              </span>
-                            </div>
-                            <div className={styles.setDetailStat}>
-                              <span className={styles.setDetailStatLabel}>
-                                P&L %
-                              </span>
-                              <span
-                                className={`${styles.setDetailStatValue} ${latest.pnlPercent >= 0 ? styles.positive : styles.negative}`}
-                              >
-                                {formatPct(latest.pnlPercent)}
-                              </span>
-                            </div>
-                            {deltaPct !== null && (
-                              <div className={styles.setDetailStat}>
-                                <span className={styles.setDetailStatLabel}>
-                                  Change
-                                </span>
-                                <span
-                                  className={`${styles.setDetailStatValue} ${deltaPct >= 0 ? styles.positive : styles.negative}`}
-                                >
-                                  {formatPct(deltaPct)}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                        {set.name}
+                      </button>
                     );
                   })}
                 </div>
+
+                {selectedSetIds.size === 0 && (
+                  <div className={styles.emptyCard}>
+                    <p className={styles.emptyTitle}>No sets selected</p>
+                    <p className={styles.emptyDesc}>
+                      Select one or more sets above to view their performance.
+                    </p>
+                  </div>
+                )}
+
+                {/* Multi-set comparison view */}
+                {activeSets.length > 1 && (
+                  <>
+                    <CompareBanner
+                      data={setTimelines.get(activeSets[0]?.id) ?? []}
+                      sel={setCompare.sel}
+                      onClear={setCompare.clear}
+                      getValues={(idx) =>
+                        activeSets.map((set) => {
+                          const d = setTimelines.get(set.id) ?? [];
+                          return {
+                            label: `${set.name} P&L %`,
+                            val: d[idx]?.pnlPercent ?? 0,
+                            isCurrency: false,
+                          };
+                        })
+                      }
+                    />
+
+                    <div className={styles.chartCard}>
+                      <h2 className={styles.chartTitle}>Set P&L % over time</h2>
+                      <ResponsiveContainer width="100%" height={320}>
+                        <LineChart
+                          margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
+                          onClick={(state) => {
+                            const s = state as unknown as ChartClickState;
+                            if (s?.activeTooltipIndex != null)
+                              setCompare.handleClick(null, s.activeTooltipIndex);
+                          }}
+                          style={{ cursor: "crosshair" }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="rgba(0,0,0,0.07)"
+                          />
+                          <XAxis
+                            dataKey="date"
+                            allowDuplicatedCategory={false}
+                            tick={{ fontSize: 12, fill: "#6e6e73" }}
+                            tickLine={false}
+                          />
+                          <YAxis
+                            tickFormatter={(v) => `${v}%`}
+                            tick={{ fontSize: 12, fill: "#6e6e73" }}
+                            tickLine={false}
+                            axisLine={false}
+                            width={52}
+                          />
+                          <Tooltip
+                            formatter={(value: unknown, name: unknown) => [
+                              `${toNum(value).toFixed(2)}%`,
+                              String(name ?? ""),
+                            ]}
+                            contentStyle={{
+                              borderRadius: 8,
+                              border: "1px solid rgba(0,0,0,0.08)",
+                              fontSize: 13,
+                            }}
+                          />
+                          <Legend wrapperStyle={{ fontSize: 13 }} />
+                          {(() => {
+                            const firstSetData = setTimelines.get(activeSets[0]?.id) ?? [];
+                            if (setCompare.sel.startIdx !== null && setCompare.sel.endIdx !== null) {
+                              return (
+                                <ReferenceArea
+                                  x1={firstSetData[setCompare.sel.startIdx]?.date}
+                                  x2={firstSetData[setCompare.sel.endIdx]?.date}
+                                  fill={refAreaColor}
+                                  fillOpacity={1}
+                                />
+                              );
+                            }
+                            return null;
+                          })()}
+                          {activeSets.map((set) => {
+                            const globalIdx = sets.findIndex((s) => s.id === set.id);
+                            const data = setTimelines.get(set.id) ?? [];
+                            return (
+                              <Line
+                                key={set.id}
+                                data={data}
+                                dataKey="pnlPercent"
+                                name={set.name}
+                                stroke={SET_COLORS[globalIdx % SET_COLORS.length]}
+                                strokeWidth={2.5}
+                                dot={false}
+                                activeDot={{ r: 5 }}
+                                type="linear"
+                              />
+                            );
+                          })}
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className={styles.setCardsGrid}>
+                      {activeSets.map((set) => {
+                        const globalIdx = sets.findIndex((s) => s.id === set.id);
+                        const data = setTimelines.get(set.id) ?? [];
+                        const latest = data[data.length - 1];
+                        const first = data[0];
+                        const deltaPct =
+                          first && latest
+                            ? latest.pnlPercent - first.pnlPercent
+                            : null;
+                        return (
+                          <div key={set.id} className={styles.setDetailCard}>
+                            <span
+                              className={styles.setDetailDot}
+                              style={{
+                                background: SET_COLORS[globalIdx % SET_COLORS.length],
+                              }}
+                            />
+                            <p className={styles.setDetailName}>{set.name}</p>
+                            {latest && (
+                              <div className={styles.setDetailStats}>
+                                <div className={styles.setDetailStat}>
+                                  <span className={styles.setDetailStatLabel}>
+                                    Invested
+                                  </span>
+                                  <span className={styles.setDetailStatValue}>
+                                    {formatCurrency(latest.totalInvested)}
+                                  </span>
+                                </div>
+                                <div className={styles.setDetailStat}>
+                                  <span className={styles.setDetailStatLabel}>
+                                    Value
+                                  </span>
+                                  <span
+                                    className={`${styles.setDetailStatValue} ${latest.pnl >= 0 ? styles.positive : styles.negative}`}
+                                  >
+                                    {formatCurrency(latest.totalValue)}
+                                  </span>
+                                </div>
+                                <div className={styles.setDetailStat}>
+                                  <span className={styles.setDetailStatLabel}>
+                                    P&L %
+                                  </span>
+                                  <span
+                                    className={`${styles.setDetailStatValue} ${latest.pnlPercent >= 0 ? styles.positive : styles.negative}`}
+                                  >
+                                    {formatPct(latest.pnlPercent)}
+                                  </span>
+                                </div>
+                                {deltaPct !== null && (
+                                  <div className={styles.setDetailStat}>
+                                    <span className={styles.setDetailStatLabel}>
+                                      Change
+                                    </span>
+                                    <span
+                                      className={`${styles.setDetailStatValue} ${deltaPct >= 0 ? styles.positive : styles.negative}`}
+                                    >
+                                      {formatPct(deltaPct)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+
+                {/* Single-set detail view */}
+                {singleSelectedSet && (() => {
+                  const singleSetData = setTimelines.get(singleSelectedSet.id) ?? [];
+                  const latest = singleSetData[singleSetData.length - 1];
+                  const first = singleSetData[0];
+                  const globalIdx = sets.findIndex((s) => s.id === singleSelectedSet.id);
+                  const setColor = SET_COLORS[globalIdx % SET_COLORS.length];
+                  const deltaPct = first && latest ? latest.pnlPercent - first.pnlPercent : null;
+
+                  return (
+                    <>
+                      <div className={styles.singleSetHeader}>
+                        <span
+                          className={styles.singleSetDot}
+                          style={{ background: setColor }}
+                        />
+                        <h2 className={styles.singleSetTitle}>{singleSelectedSet.name}</h2>
+                        <span className={styles.singleSetBadge}>
+                          {singleSelectedSet.symbols.length} stock{singleSelectedSet.symbols.length !== 1 ? "s" : ""}
+                        </span>
+                      </div>
+
+                      {latest && (
+                        <div className={styles.statRow}>
+                          <StatCard
+                            label="Invested"
+                            value={formatCurrency(latest.totalInvested)}
+                          />
+                          <StatCard
+                            label="Current Value"
+                            value={formatCurrency(latest.totalValue)}
+                            positive={latest.pnl >= 0}
+                            negative={latest.pnl < 0}
+                          />
+                          <StatCard
+                            label="Total P&L"
+                            value={formatCurrency(latest.pnl)}
+                            positive={latest.pnl >= 0}
+                            negative={latest.pnl < 0}
+                          />
+                          <StatCard
+                            label="P&L %"
+                            value={formatPct(latest.pnlPercent)}
+                            positive={latest.pnlPercent >= 0}
+                            negative={latest.pnlPercent < 0}
+                          />
+                          {deltaPct !== null && (
+                            <StatCard
+                              label="Change since first upload"
+                              value={formatPct(deltaPct)}
+                              positive={deltaPct >= 0}
+                              negative={deltaPct < 0}
+                            />
+                          )}
+                        </div>
+                      )}
+
+                      <CompareBanner
+                        data={singleSetData}
+                        sel={setCompare.sel}
+                        onClear={setCompare.clear}
+                        getValues={(idx) => {
+                          const pt = singleSetData[idx];
+                          return [
+                            { label: "Invested", val: pt.totalInvested, isCurrency: true },
+                            { label: "Value", val: pt.totalValue, isCurrency: true },
+                            { label: "P&L", val: pt.pnl, isCurrency: true },
+                            { label: "P&L %", val: pt.pnlPercent, isCurrency: false },
+                          ];
+                        }}
+                      />
+
+                      <div className={styles.chartCard}>
+                        <h2 className={styles.chartTitle}>
+                          {singleSelectedSet.name} — Invested vs. Value
+                        </h2>
+                        <ResponsiveContainer width="100%" height={320}>
+                          <LineChart
+                            data={singleSetData}
+                            margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
+                            onClick={(state) => {
+                              const s = state as unknown as ChartClickState;
+                              if (s?.activeTooltipIndex != null)
+                                setCompare.handleClick(null, s.activeTooltipIndex);
+                            }}
+                            style={{ cursor: "crosshair" }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fontSize: 12, fill: "#6e6e73" }}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tickFormatter={(v) =>
+                                new Intl.NumberFormat("en-IN", {
+                                  notation: "compact",
+                                  maximumFractionDigits: 1,
+                                }).format(v)
+                              }
+                              tick={{ fontSize: 12, fill: "#6e6e73" }}
+                              tickLine={false}
+                              axisLine={false}
+                              width={72}
+                            />
+                            <Tooltip
+                              formatter={currencyFormatter}
+                              contentStyle={{
+                                borderRadius: 8,
+                                border: "1px solid rgba(0,0,0,0.08)",
+                                fontSize: 13,
+                              }}
+                            />
+                            <Legend wrapperStyle={{ fontSize: 13 }} />
+                            {renderCompareOverlay(singleSetData, setCompare.sel, "totalValue")}
+                            <Line
+                              type="linear"
+                              dataKey="totalInvested"
+                              name="Invested"
+                              stroke="#6e6e73"
+                              strokeDasharray="4 3"
+                              strokeWidth={2}
+                              dot={false}
+                              activeDot={{ r: 4 }}
+                            />
+                            <Line
+                              type="linear"
+                              dataKey="totalValue"
+                              name="Value"
+                              stroke={setColor}
+                              strokeWidth={2.5}
+                              dot={false}
+                              activeDot={{ r: 5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      <div className={styles.chartCard}>
+                        <h2 className={styles.chartTitle}>
+                          {singleSelectedSet.name} — P&L % over time
+                        </h2>
+                        <ResponsiveContainer width="100%" height={240}>
+                          <LineChart
+                            data={singleSetData}
+                            margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
+                            onClick={(state) => {
+                              const s = state as unknown as ChartClickState;
+                              if (s?.activeTooltipIndex != null)
+                                setCompare.handleClick(null, s.activeTooltipIndex);
+                            }}
+                            style={{ cursor: "crosshair" }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
+                            <XAxis
+                              dataKey="date"
+                              tick={{ fontSize: 12, fill: "#6e6e73" }}
+                              tickLine={false}
+                            />
+                            <YAxis
+                              tickFormatter={(v) => `${v}%`}
+                              tick={{ fontSize: 12, fill: "#6e6e73" }}
+                              tickLine={false}
+                              axisLine={false}
+                              width={52}
+                            />
+                            <Tooltip
+                              formatter={pctFormatter}
+                              contentStyle={{
+                                borderRadius: 8,
+                                border: "1px solid rgba(0,0,0,0.08)",
+                                fontSize: 13,
+                              }}
+                            />
+                            {renderCompareOverlay(singleSetData, setCompare.sel, "pnlPercent")}
+                            <Line
+                              type="linear"
+                              dataKey="pnlPercent"
+                              name="P&L %"
+                              stroke={setColor}
+                              strokeWidth={2.5}
+                              dot={false}
+                              activeDot={{ r: 5 }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Per-stock P&L % comparison within this set */}
+                      {singleSetStockTimelines && singleSelectedSet.symbols.length > 0 && (
+                        <div className={styles.chartCard}>
+                          <h2 className={styles.chartTitle}>
+                            Stock-level P&L % — {singleSelectedSet.name}
+                          </h2>
+                          <ResponsiveContainer width="100%" height={360}>
+                            <LineChart
+                              margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
+                              style={{ cursor: "crosshair" }}
+                            >
+                              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.07)" />
+                              <XAxis
+                                dataKey="date"
+                                allowDuplicatedCategory={false}
+                                tick={{ fontSize: 12, fill: "#6e6e73" }}
+                                tickLine={false}
+                              />
+                              <YAxis
+                                tickFormatter={(v) => `${v}%`}
+                                tick={{ fontSize: 12, fill: "#6e6e73" }}
+                                tickLine={false}
+                                axisLine={false}
+                                width={52}
+                              />
+                              <Tooltip
+                                formatter={(value: unknown, name: unknown) => [
+                                  `${toNum(value).toFixed(2)}%`,
+                                  String(name ?? ""),
+                                ]}
+                                contentStyle={{
+                                  borderRadius: 8,
+                                  border: "1px solid rgba(0,0,0,0.08)",
+                                  fontSize: 13,
+                                }}
+                              />
+                              <Legend wrapperStyle={{ fontSize: 13 }} />
+                              {singleSelectedSet.symbols.map((sym, si) => {
+                                const data = singleSetStockTimelines.get(sym) ?? [];
+                                return (
+                                  <Line
+                                    key={sym}
+                                    data={data}
+                                    dataKey="pnlPercent"
+                                    name={sym}
+                                    stroke={SET_COLORS[si % SET_COLORS.length]}
+                                    strokeWidth={2}
+                                    dot={false}
+                                    activeDot={{ r: 4 }}
+                                    type="linear"
+                                  />
+                                );
+                              })}
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+
+                      {/* Per-stock stat cards within this set */}
+                      {singleSetStockTimelines && (
+                        <div className={styles.setCardsGrid}>
+                          {singleSelectedSet.symbols.map((sym, si) => {
+                            const data = singleSetStockTimelines.get(sym) ?? [];
+                            const latestPt = data[data.length - 1];
+                            const firstPt = data[0];
+                            const stockDeltaPct =
+                              firstPt && latestPt
+                                ? latestPt.pnlPercent - firstPt.pnlPercent
+                                : null;
+                            return (
+                              <div key={sym} className={styles.setDetailCard}>
+                                <span
+                                  className={styles.setDetailDot}
+                                  style={{
+                                    background: SET_COLORS[si % SET_COLORS.length],
+                                  }}
+                                />
+                                <p className={styles.setDetailName}>{sym}</p>
+                                {latestPt && (
+                                  <div className={styles.setDetailStats}>
+                                    <div className={styles.setDetailStat}>
+                                      <span className={styles.setDetailStatLabel}>
+                                        Invested
+                                      </span>
+                                      <span className={styles.setDetailStatValue}>
+                                        {formatCurrency(latestPt.invested)}
+                                      </span>
+                                    </div>
+                                    <div className={styles.setDetailStat}>
+                                      <span className={styles.setDetailStatLabel}>
+                                        Value
+                                      </span>
+                                      <span
+                                        className={`${styles.setDetailStatValue} ${latestPt.pnl >= 0 ? styles.positive : styles.negative}`}
+                                      >
+                                        {formatCurrency(latestPt.value)}
+                                      </span>
+                                    </div>
+                                    <div className={styles.setDetailStat}>
+                                      <span className={styles.setDetailStatLabel}>
+                                        P&L %
+                                      </span>
+                                      <span
+                                        className={`${styles.setDetailStatValue} ${latestPt.pnlPercent >= 0 ? styles.positive : styles.negative}`}
+                                      >
+                                        {formatPct(latestPt.pnlPercent)}
+                                      </span>
+                                    </div>
+                                    <div className={styles.setDetailStat}>
+                                      <span className={styles.setDetailStatLabel}>
+                                        Qty
+                                      </span>
+                                      <span className={styles.setDetailStatValue}>
+                                        {latestPt.quantity}
+                                      </span>
+                                    </div>
+                                    {stockDeltaPct !== null && (
+                                      <div className={styles.setDetailStat}>
+                                        <span className={styles.setDetailStatLabel}>
+                                          Change
+                                        </span>
+                                        <span
+                                          className={`${styles.setDetailStatValue} ${stockDeltaPct >= 0 ? styles.positive : styles.negative}`}
+                                        >
+                                          {formatPct(stockDeltaPct)}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </>
             )}
           </section>

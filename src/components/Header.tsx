@@ -28,7 +28,7 @@ export function Header() {
   const isDemo = mode === "demo";
   const isGuest = mode === "guest";
   const showProfile = isGuest || !!user;
-  const showPillNav = hasPortfolio && isLoggedIn;
+  const showPillNav = !!hasPortfolio;
 
   useEffect(() => {
     if (!profileOpen) return;
@@ -97,6 +97,10 @@ export function Header() {
       })
     : null;
 
+  const dashboardPath = isDemo ? "/demo" : "/app";
+  const isOnDashboard =
+    location.pathname === "/app" || location.pathname === "/demo";
+  const isOnAnalysis = location.pathname === "/app/analysis";
   const isOnHistory = location.pathname === "/app/history";
 
   return (
@@ -121,18 +125,27 @@ export function Header() {
         <nav className={styles.pillNav} aria-label="Page navigation">
           <button
             type="button"
-            className={`${styles.pill} ${!isOnHistory ? styles.pillActive : ""}`}
-            onClick={() => navigate("/app")}
+            className={`${styles.pill} ${isOnDashboard ? styles.pillActive : ""}`}
+            onClick={() => navigate(dashboardPath)}
           >
             Dashboard
           </button>
           <button
             type="button"
-            className={`${styles.pill} ${isOnHistory ? styles.pillActive : ""}`}
-            onClick={() => navigate("/app/history")}
+            className={`${styles.pill} ${isOnAnalysis ? styles.pillActive : ""}`}
+            onClick={() => navigate("/app/analysis")}
           >
-            History
+            Analysis
           </button>
+          {isLoggedIn && (
+            <button
+              type="button"
+              className={`${styles.pill} ${isOnHistory ? styles.pillActive : ""}`}
+              onClick={() => navigate("/app/history")}
+            >
+              History
+            </button>
+          )}
         </nav>
       )}
 

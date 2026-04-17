@@ -119,6 +119,21 @@ export function computeStockTimeline(
 }
 
 /**
+ * Compute per-stock timelines for every symbol in a given set across all snapshots.
+ * Returns a map of symbol → StockTimelinePoint[].
+ */
+export function computeSetStockTimelines(
+  snapshots: PortfolioSnapshot[],
+  set: StockSet
+): Map<string, StockTimelinePoint[]> {
+  const result = new Map<string, StockTimelinePoint[]>();
+  for (const symbol of set.symbols) {
+    result.set(symbol, computeStockTimeline(snapshots, symbol));
+  }
+  return result;
+}
+
+/**
  * Returns a sorted list of unique stock symbols found across all snapshots.
  */
 export function getAllStockSymbols(snapshots: PortfolioSnapshot[]): string[] {
