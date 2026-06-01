@@ -6,7 +6,7 @@ import type {
 } from "./types";
 
 /**
- * Analyze a single set: compute targets (max current value per stock),
+ * Analyze a single set: compute targets (max invested amount per stock),
  * BUY/SELL/HOLD, difference, P&L. Matches original index.html logic.
  */
 export function analyzeSet(
@@ -17,6 +17,7 @@ export function analyzeSet(
   let totalInvested = 0;
   let totalCurrentValue = 0;
   let maxCurrentValue = 0;
+  let maxInvested = 0;
 
   for (const symbol of stocks) {
     const stockData = portfolioData[symbol];
@@ -31,6 +32,7 @@ export function analyzeSet(
       totalInvested += stockData.invested;
       totalCurrentValue += stockData.currentValue;
       maxCurrentValue = Math.max(maxCurrentValue, stockData.currentValue);
+      maxInvested = Math.max(maxInvested, stockData.invested);
     } else {
       holdings.push({
         name: symbol,
@@ -42,7 +44,7 @@ export function analyzeSet(
     }
   }
 
-  const targetPerStock = maxCurrentValue;
+  const targetPerStock = maxInvested;
 
   const actions: AnalyzedHolding[] = holdings.map((holding) => {
     const difference = targetPerStock - holding.currentValue;

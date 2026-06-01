@@ -100,7 +100,6 @@ export function Header() {
   const dashboardPath = isDemo ? "/demo" : "/app";
   const isOnDashboard =
     location.pathname === "/app" || location.pathname === "/demo";
-  const isOnAnalysis = location.pathname === "/app/analysis";
   const isOnHistory = location.pathname === "/app/history";
 
   return (
@@ -129,13 +128,6 @@ export function Header() {
             onClick={() => navigate(dashboardPath)}
           >
             Dashboard
-          </button>
-          <button
-            type="button"
-            className={`${styles.pill} ${isOnAnalysis ? styles.pillActive : ""}`}
-            onClick={() => navigate("/app/analysis")}
-          >
-            Analysis
           </button>
           {isLoggedIn && (
             <button
