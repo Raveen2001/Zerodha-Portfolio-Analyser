@@ -89,6 +89,14 @@ export function SetResults({ analysis }: SetResultsProps) {
                 >
                   {h.difference >= 0 ? "+" : ""}
                   {formatMoney(h.difference)}
+                  {h.action !== "HOLD" && (
+                    <>
+                      <br />
+                      <small className={styles.actionHint}>
+                        {h.action} {h.shares} {h.shares === 1 ? "share" : "shares"}
+                      </small>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

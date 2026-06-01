@@ -102,6 +102,11 @@
   color: var(--color-neutral);
 }
 
+.actionHint {
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
 @media (max-width: 768px) {
   .card {
     padding: 16px;
