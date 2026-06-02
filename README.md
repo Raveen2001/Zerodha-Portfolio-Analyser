@@ -36,6 +36,30 @@ Open http://localhost:5173. Use **Continue without login** or **Try demo**; data
 
 Then run `npm run dev`. Sign in with email or **Continue with Google** to sync portfolio and sets to Supabase.
 
+### Index fund comparison (Edge Function)
+
+The History tab can overlay benchmark index lines (Nifty 50, Sensex, etc.) on the P&L % charts. Data is fetched from Yahoo Finance via a Supabase Edge Function so the browser does not need direct access to Yahoo's API.
+
+To enable this, deploy the function after linking your project:
+
+```bash
+npx supabase functions deploy index-prices
+```
+
+No new environment variables or database migrations are required. If the function is not deployed, the index selector will still appear but fetch attempts will fail gracefully — the rest of the History tab is unaffected.
+
+**Available indices** (defined in `src/lib/indexData.ts`):
+
+| ID | Label | Yahoo Symbol |
+|----|-------|-------------|
+| `nifty50` | Nifty 50 | `^NSEI` |
+| `sensex` | Sensex | `^BSESN` |
+| `niftybank` | Nifty Bank | `^NSEBANK` |
+| `niftyit` | Nifty IT | `^CNXIT` |
+| `niftynext50` | Nifty Next 50 | `^NSMIDCP` |
+
+Index prices are cached in `localStorage` for 6 hours per symbol/date range.
+
 ### Build for production
 
 ```bash

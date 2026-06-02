@@ -20,7 +20,10 @@ import {
   computeSetStockTimelines,
   computeStockTimeline,
   getAllStockSymbols,
+  computeIndexSeries,
+  mergeIndexSeries,
 } from "../historyAnalysis";
+import { fetchIndexCloses, INDEX_REGISTRY } from "../lib/indexData";
 import { loadAllSnapshots } from "../lib/storage";
 import type { PortfolioSnapshot } from "../types";
 
@@ -60,10 +63,6 @@ function toNum(v: unknown): number {
 
 function currencyFormatter(value: unknown, name: unknown): [string, string] {
   return [formatCurrency(toNum(value)), String(name ?? "")];
-}
-
-function pctFormatter(value: unknown): [string, string] {
-  return [`${toNum(value).toFixed(2)}%`, "P&L %"];
 }
 
 interface StatCardProps {
@@ -178,6 +177,13 @@ export function History() {
   const [snapshots, setSnapshots] = useState<PortfolioSnapshot[]>([]);
   const [loadingSnapshots, setLoadingSnapshots] = useState(false);
   const [activeTab, setActiveTab] = useState<Tab>("portfolio");
+
+  // Index comparison state
+  const [selectedIndexIds, setSelectedIndexIds] = useState<Set<string>>(new Set());
+  const [indexClosesMap, setIndexClosesMap] = useState<
+    Map<string, { date: string; close: number }[]>
+  >(new Map());
+  const [indexError, setIndexError] = useState<string | null>(null);
   const [selectedSetIds, setSelectedSetIds] = useState<Set<string>>(new Set());
   const [selectedStock, setSelectedStock] = useState<string>("");
   const [stockSearch, setStockSearch] = useState("");
@@ -206,6 +212,52 @@ export function History() {
     stockValueCompare.clear();
     stockPnlCompare.clear();
   }, [activeTab, selectedStock]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch closes for every selected index whenever selection or snapshots change
+  useEffect(() => {
+    if (snapshots.length < 2 || selectedIndexIds.size === 0) return;
+    const fromISO = snapshots[0].uploadedAt;
+    const toISO = snapshots[snapshots.length - 1].uploadedAt;
+
+    let cancelled = false;
+    setIndexError(null);
+
+    // Read current map inside the effect to avoid stale-closure skips
+    const toFetch = INDEX_REGISTRY.filter((idx) => selectedIndexIds.has(idx.id));
+    if (toFetch.length === 0) return;
+
+    Promise.all(
+      toFetch.map((idx) =>
+        fetchIndexCloses(idx.yahooSymbol, fromISO, toISO).then((quotes) => ({
+          id: idx.id,
+          quotes,
+        }))
+      )
+    )
+      .then((results) => {
+        if (cancelled) return;
+        setIndexClosesMap((prev) => {
+          const next = new Map(prev);
+          for (const r of results) next.set(r.id, r.quotes);
+          return next;
+        });
+      })
+      .catch((err) => {
+        if (!cancelled)
+          setIndexError(
+            err instanceof Error ? err.message : "Failed to load index data"
+          );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedIndexIds, snapshots]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When snapshots change, clear the closes cache so stale data isn't shown
+  useEffect(() => {
+    setIndexClosesMap(new Map());
+  }, [snapshots]);
 
   const portfolioTimeline = useMemo(
     () => computePortfolioTimeline(snapshots),
@@ -239,6 +291,32 @@ export function History() {
   const clearAllSets = useCallback(() => {
     setSelectedSetIds(new Set());
   }, []);
+
+  const toggleIndex = useCallback((id: string) => {
+    setSelectedIndexIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  // Build money-weighted index series for a given invested-over-time series.
+  // Each chart passes its own invested base (portfolio / set / stock).
+  const buildIndexSeries = useCallback(
+    (investedSeries: number[]) => {
+      const result = new Map<string, (number | null)[]>();
+      for (const idx of INDEX_REGISTRY) {
+        if (!selectedIndexIds.has(idx.id)) continue;
+        const closes = indexClosesMap.get(idx.id);
+        if (!closes) continue;
+        const series = computeIndexSeries(snapshots, closes, investedSeries);
+        if (series) result.set(idx.id, series);
+      }
+      return result;
+    },
+    [selectedIndexIds, indexClosesMap, snapshots]
+  );
 
   const activeSets = useMemo(
     () => sets.filter((s) => selectedSetIds.has(s.id)),
@@ -323,6 +401,61 @@ export function History() {
     [snapshots, activeStock]
   );
 
+  // Merge money-weighted index series into timelines for the P&L % charts.
+  // Each entity uses its own invested-over-time as the cash-flow base.
+  const portfolioIndexSeries = useMemo(
+    () => buildIndexSeries(portfolioTimeline.map((p) => p.totalInvested)),
+    [buildIndexSeries, portfolioTimeline]
+  );
+  const portfolioTimelineWithIdx = useMemo(
+    () => mergeIndexSeries(portfolioTimeline, portfolioIndexSeries),
+    [portfolioTimeline, portfolioIndexSeries]
+  );
+
+  // Per-set index series + merged timelines
+  const setIndexSeriesMap = useMemo(() => {
+    const result = new Map<string, Map<string, (number | null)[]>>();
+    for (const [id, data] of setTimelines) {
+      result.set(id, buildIndexSeries(data.map((p) => p.totalInvested)));
+    }
+    return result;
+  }, [setTimelines, buildIndexSeries]);
+
+  const setTimelineWithIdx = useMemo(() => {
+    const result = new Map<string, ReturnType<typeof mergeIndexSeries>>();
+    for (const [id, data] of setTimelines) {
+      result.set(
+        id,
+        mergeIndexSeries(data, setIndexSeriesMap.get(id) ?? new Map())
+      );
+    }
+    return result;
+  }, [setTimelines, setIndexSeriesMap]);
+
+  // Multi-set comparison chart: benchmark against the combined cash flows of
+  // all currently-selected sets.
+  const multiSetIndexSeries = useMemo(() => {
+    if (activeSets.length === 0) return new Map<string, (number | null)[]>();
+    const len = setTimelines.get(activeSets[0].id)?.length ?? 0;
+    const combinedInvested = new Array(len).fill(0);
+    for (const set of activeSets) {
+      const data = setTimelines.get(set.id) ?? [];
+      for (let i = 0; i < len; i++) {
+        combinedInvested[i] += data[i]?.totalInvested ?? 0;
+      }
+    }
+    return buildIndexSeries(combinedInvested);
+  }, [activeSets, setTimelines, buildIndexSeries]);
+
+  const stockIndexSeries = useMemo(
+    () => buildIndexSeries(stockTimeline.map((p) => p.invested)),
+    [buildIndexSeries, stockTimeline]
+  );
+  const stockTimelineWithIdx = useMemo(
+    () => mergeIndexSeries(stockTimeline, stockIndexSeries),
+    [stockTimeline, stockIndexSeries]
+  );
+
   const portfolioLatest = portfolioTimeline[portfolioTimeline.length - 1];
   const portfolioFirst = portfolioTimeline[0];
 
@@ -405,6 +538,23 @@ export function History() {
   const refAreaColor = "rgba(0, 113, 227, 0.08)";
   const refDotColor = "#0071e3";
 
+  function renderIndexLines(seriesById: Map<string, (number | null)[]>) {
+    return INDEX_REGISTRY.filter((idx) => seriesById.has(idx.id)).map((idx) => (
+      <Line
+        key={`idx_${idx.id}`}
+        type="linear"
+        dataKey={`idx_${idx.id}`}
+        name={idx.label}
+        stroke={idx.color}
+        strokeWidth={2}
+        strokeDasharray="6 3"
+        dot={false}
+        activeDot={{ r: 4 }}
+        connectNulls
+      />
+    ));
+  }
+
   function renderCompareOverlay(
     data: { date: string }[],
     sel: CompareSelection,
@@ -486,6 +636,45 @@ export function History() {
               {label}
             </button>
           ))}
+        </div>
+
+        {/* Index benchmark selector */}
+        <div className={styles.indexSelectorCard}>
+          <div className={styles.indexSelectorHeader}>
+            <span className={styles.indexSelectorTitle}>Benchmark comparison</span>
+            <span className={styles.indexSelectorHint}>
+              Select indices to overlay on P&L % charts
+            </span>
+          </div>
+          {indexError && (
+            <p className={styles.indexError}>{indexError}</p>
+          )}
+          <div className={styles.setPillRow}>
+            {INDEX_REGISTRY.map((idx) => {
+              const isActive = selectedIndexIds.has(idx.id);
+              const isLoading = isActive && !indexClosesMap.has(idx.id);
+              return (
+                <button
+                  key={idx.id}
+                  type="button"
+                  className={`${styles.setPill} ${isActive ? styles.setPillActive : ""}`}
+                  style={
+                    isActive
+                      ? { borderColor: idx.color, background: `${idx.color}18` }
+                      : undefined
+                  }
+                  onClick={() => toggleIndex(idx.id)}
+                >
+                  <span
+                    className={styles.setPillDot}
+                    style={{ background: isActive ? idx.color : "var(--color-border)" }}
+                  />
+                  {idx.label}
+                  {isLoading && <span className={styles.indexLoadingDot} />}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {activeTab === "portfolio" && (
@@ -610,7 +799,7 @@ export function History() {
               <h2 className={styles.chartTitle}>P&L % over time</h2>
               <ResponsiveContainer width="100%" height={240}>
                 <LineChart
-                  data={portfolioTimeline}
+                  data={portfolioTimelineWithIdx as unknown as Record<string, unknown>[]}
                   margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
                   onClick={(state) => {
                     const s = state as unknown as ChartClickState;
@@ -633,13 +822,17 @@ export function History() {
                     width={52}
                   />
                   <Tooltip
-                    formatter={pctFormatter}
+                    formatter={(value: unknown, name: unknown) => [
+                      `${toNum(value).toFixed(2)}%`,
+                      String(name ?? ""),
+                    ]}
                     contentStyle={{
                       borderRadius: 8,
                       border: "1px solid rgba(0,0,0,0.08)",
                       fontSize: 13,
                     }}
                   />
+                  <Legend wrapperStyle={{ fontSize: 13 }} />
                   {renderCompareOverlay(portfolioTimeline, portfolioCompare.sel, "pnlPercent")}
                   <Line
                     type="linear"
@@ -650,6 +843,7 @@ export function History() {
                     dot={false}
                     activeDot={{ r: 5 }}
                   />
+                  {renderIndexLines(portfolioIndexSeries)}
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -818,6 +1012,29 @@ export function History() {
                                 dot={false}
                                 activeDot={{ r: 5 }}
                                 type="linear"
+                              />
+                            );
+                          })}
+                          {INDEX_REGISTRY.filter((idx) =>
+                            multiSetIndexSeries.has(idx.id)
+                          ).map((idx) => {
+                            const series = multiSetIndexSeries.get(idx.id)!;
+                            const data = (setTimelines.get(activeSets[0]?.id) ?? []).map(
+                              (pt, i) => ({ date: pt.date, pct: series[i] ?? null })
+                            );
+                            return (
+                              <Line
+                                key={`idx_${idx.id}`}
+                                data={data}
+                                dataKey="pct"
+                                name={idx.label}
+                                stroke={idx.color}
+                                strokeWidth={2}
+                                strokeDasharray="6 3"
+                                dot={false}
+                                activeDot={{ r: 4 }}
+                                type="linear"
+                                connectNulls
                               />
                             );
                           })}
@@ -1039,7 +1256,7 @@ export function History() {
                         </h2>
                         <ResponsiveContainer width="100%" height={240}>
                           <LineChart
-                            data={singleSetData}
+                            data={(setTimelineWithIdx.get(singleSelectedSet.id) ?? singleSetData) as unknown as Record<string, unknown>[]}
                             margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
                             onClick={(state) => {
                               const s = state as unknown as ChartClickState;
@@ -1062,13 +1279,17 @@ export function History() {
                               width={52}
                             />
                             <Tooltip
-                              formatter={pctFormatter}
+                              formatter={(value: unknown, name: unknown) => [
+                                `${toNum(value).toFixed(2)}%`,
+                                String(name ?? ""),
+                              ]}
                               contentStyle={{
                                 borderRadius: 8,
                                 border: "1px solid rgba(0,0,0,0.08)",
                                 fontSize: 13,
                               }}
                             />
+                            <Legend wrapperStyle={{ fontSize: 13 }} />
                             {renderCompareOverlay(singleSetData, setCompare.sel, "pnlPercent")}
                             <Line
                               type="linear"
@@ -1079,6 +1300,9 @@ export function History() {
                               dot={false}
                               activeDot={{ r: 5 }}
                             />
+                            {renderIndexLines(
+                              setIndexSeriesMap.get(singleSelectedSet.id) ?? new Map()
+                            )}
                           </LineChart>
                         </ResponsiveContainer>
                       </div>
@@ -1449,7 +1673,7 @@ export function History() {
                   </h2>
                   <ResponsiveContainer width="100%" height={240}>
                     <LineChart
-                      data={stockTimeline}
+                      data={stockTimelineWithIdx as unknown as Record<string, unknown>[]}
                       margin={{ top: 8, right: 40, left: 8, bottom: 8 }}
                       onClick={(state) => {
                         const s = state as unknown as ChartClickState;
@@ -1475,13 +1699,17 @@ export function History() {
                         width={52}
                       />
                       <Tooltip
-                        formatter={pctFormatter}
+                        formatter={(value: unknown, name: unknown) => [
+                          `${toNum(value).toFixed(2)}%`,
+                          String(name ?? ""),
+                        ]}
                         contentStyle={{
                           borderRadius: 8,
                           border: "1px solid rgba(0,0,0,0.08)",
                           fontSize: 13,
                         }}
                       />
+                      <Legend wrapperStyle={{ fontSize: 13 }} />
                       {renderCompareOverlay(stockTimeline, stockPnlCompare.sel, "pnlPercent")}
                       <Line
                         type="linear"
@@ -1492,6 +1720,7 @@ export function History() {
                         dot={false}
                         activeDot={{ r: 5 }}
                       />
+                      {renderIndexLines(stockIndexSeries)}
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
