@@ -16,7 +16,6 @@ export function analyzeSet(
   const holdings: AnalyzedHolding[] = [];
   let totalInvested = 0;
   let totalCurrentValue = 0;
-  let maxCurrentValue = 0;
   let maxInvested = 0;
 
   for (const symbol of stocks) {
@@ -31,7 +30,6 @@ export function analyzeSet(
       } as AnalyzedHolding);
       totalInvested += stockData.invested;
       totalCurrentValue += stockData.currentValue;
-      maxCurrentValue = Math.max(maxCurrentValue, stockData.currentValue);
       maxInvested = Math.max(maxInvested, stockData.invested);
     } else {
       holdings.push({
@@ -47,7 +45,7 @@ export function analyzeSet(
   const targetPerStock = maxInvested;
 
   const actions: AnalyzedHolding[] = holdings.map((holding) => {
-    const difference = targetPerStock - holding.currentValue;
+    const difference = targetPerStock - holding.invested;
     const currentPrice =
       holding.quantity > 0
         ? holding.currentValue / holding.quantity
