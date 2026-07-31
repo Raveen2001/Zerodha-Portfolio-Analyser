@@ -134,14 +134,30 @@ export async function loadAllSnapshots(
   if (!supabase) return [];
   const { data, error } = await supabase
     .from("portfolio_snapshots")
-    .select("uploaded_at, holdings")
+    .select("id, uploaded_at, holdings")
     .eq("user_id", userId)
     .order("uploaded_at", { ascending: true });
   if (error || !data) return [];
-  return data.map((row: { uploaded_at: string; holdings: PortfolioData }) => ({
-    uploadedAt: row.uploaded_at,
-    holdings: row.holdings as PortfolioData,
-  }));
+  return data.map(
+    (row: { id: string; uploaded_at: string; holdings: PortfolioData }) => ({
+      id: row.id,
+      uploadedAt: row.uploaded_at,
+      holdings: row.holdings as PortfolioData,
+    })
+  );
+}
+
+export async function deleteSupabaseSnapshot(
+  userId: string,
+  snapshotId: string
+): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase
+    .from("portfolio_snapshots")
+    .delete()
+    .eq("user_id", userId)
+    .eq("id", snapshotId);
+  return !error;
 }
 
 export async function getPortfolioUploadedAt(

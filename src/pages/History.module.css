@@ -641,3 +641,87 @@
     padding: 18px 12px 12px;
   }
 }
+
+/* ---- Snapshot manager ---- */
+
+.snapshotManagerCard {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  box-shadow: var(--shadow);
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.snapshotManagerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.snapshotManagerTitles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.snapshotTableWrap {
+  overflow-x: auto;
+}
+
+.snapshotTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.snapshotTable th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.snapshotTable td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  white-space: nowrap;
+}
+
+.snapshotTable tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.snapshotActionCell {
+  text-align: right;
+}
+
+.snapshotDeleteBtn {
+  font-size: 0.75rem;
+  padding: 5px 12px;
+  border: 1px solid var(--color-negative, #ff3b30);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-negative, #ff3b30);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.snapshotDeleteBtn:hover:not(:disabled) {
+  background: var(--color-negative, #ff3b30);
+  color: #fff;
+}
+
+.snapshotDeleteBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}

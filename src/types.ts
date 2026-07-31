@@ -40,6 +40,8 @@ export interface SetAnalysis {
 
 /** Stored portfolio snapshot (for Supabase or localStorage) */
 export interface PortfolioSnapshot {
+  /** Supabase row id; absent for guest/local snapshots */
+  id?: string;
   uploadedAt: string;
   holdings: PortfolioData;
 }

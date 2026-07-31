@@ -24,7 +24,7 @@ import {
   mergeIndexSeries,
 } from "../historyAnalysis";
 import { fetchIndexCloses, INDEX_REGISTRY } from "../lib/indexData";
-import { loadAllSnapshots } from "../lib/storage";
+import { deleteSupabaseSnapshot, loadAllSnapshots } from "../lib/storage";
 import type { PortfolioSnapshot } from "../types";
 
 interface ChartClickState {
@@ -80,6 +80,101 @@ function StatCard({ label, value, positive, negative }: StatCardProps) {
       >
         {value}
       </span>
+    </div>
+  );
+}
+
+interface SnapshotManagerProps {
+  snapshots: PortfolioSnapshot[];
+  onDelete: (snapshot: PortfolioSnapshot) => Promise<boolean>;
+}
+
+function SnapshotManager({ snapshots, onDelete }: SnapshotManagerProps) {
+  const [open, setOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDelete = async (snap: PortfolioSnapshot) => {
+    if (!snap.id || deletingId) return;
+    const dateLabel = new Date(snap.uploadedAt).toLocaleString();
+    if (
+      !window.confirm(
+        `Delete the snapshot from ${dateLabel}? This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setError(null);
+    setDeletingId(snap.id);
+    const ok = await onDelete(snap);
+    setDeletingId(null);
+    if (!ok) setError("Failed to delete snapshot. Please try again.");
+  };
+
+  return (
+    <div className={styles.snapshotManagerCard}>
+      <div className={styles.snapshotManagerHeader}>
+        <div className={styles.snapshotManagerTitles}>
+          <span className={styles.indexSelectorTitle}>Manage snapshots</span>
+          <span className={styles.indexSelectorHint}>
+            Delete uploads that contain wrong data
+          </span>
+        </div>
+        <button
+          type="button"
+          className={styles.setSelectorAction}
+          onClick={() => setOpen((o) => !o)}
+        >
+          {open ? "Hide" : `Show (${snapshots.length})`}
+        </button>
+      </div>
+      {error && <p className={styles.indexError}>{error}</p>}
+      {open && (
+        <div className={styles.snapshotTableWrap}>
+          <table className={styles.snapshotTable}>
+            <thead>
+              <tr>
+                <th>Uploaded</th>
+                <th>Holdings</th>
+                <th>Invested</th>
+                <th>Value</th>
+                <th aria-label="Actions" />
+              </tr>
+            </thead>
+            <tbody>
+              {[...snapshots].reverse().map((snap) => {
+                const items = Object.values(snap.holdings ?? {});
+                const invested = items.reduce(
+                  (sum, h) => sum + (h.invested || 0),
+                  0
+                );
+                const value = items.reduce(
+                  (sum, h) => sum + (h.currentValue || 0),
+                  0
+                );
+                return (
+                  <tr key={snap.id ?? snap.uploadedAt}>
+                    <td>{new Date(snap.uploadedAt).toLocaleString()}</td>
+                    <td>{items.length}</td>
+                    <td>{formatCurrency(invested)}</td>
+                    <td>{formatCurrency(value)}</td>
+                    <td className={styles.snapshotActionCell}>
+                      <button
+                        type="button"
+                        className={styles.snapshotDeleteBtn}
+                        onClick={() => handleDelete(snap)}
+                        disabled={!snap.id || deletingId !== null}
+                      >
+                        {deletingId === snap.id ? "Deleting…" : "Delete"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }
@@ -205,6 +300,16 @@ export function History() {
       .then(setSnapshots)
       .finally(() => setLoadingSnapshots(false));
   }, [isLoggedIn, user?.id]);
+
+  const handleDeleteSnapshot = useCallback(
+    async (snap: PortfolioSnapshot) => {
+      if (!snap.id || !user) return false;
+      const ok = await deleteSupabaseSnapshot(user.id, snap.id);
+      if (ok) setSnapshots((prev) => prev.filter((s) => s.id !== snap.id));
+      return ok;
+    },
+    [user]
+  );
 
   useEffect(() => {
     portfolioCompare.clear();
@@ -530,6 +635,12 @@ export function History() {
               Go to Dashboard
             </button>
           </div>
+          {snapshots.length > 0 && (
+            <SnapshotManager
+              snapshots={snapshots}
+              onDelete={handleDeleteSnapshot}
+            />
+          )}
         </main>
       </div>
     );
@@ -1728,6 +1839,11 @@ export function History() {
             )}
           </section>
         )}
+
+        <SnapshotManager
+          snapshots={snapshots}
+          onDelete={handleDeleteSnapshot}
+        />
       </main>
     </div>
   );

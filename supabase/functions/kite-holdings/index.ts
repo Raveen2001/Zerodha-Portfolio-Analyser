@@ -104,7 +104,8 @@ serve(async (req) => {
     const symbol = String(h.tradingsymbol ?? "")
       .trim()
       .toUpperCase();
-    const quantity = Number(h.quantity) || 0;
+    // t1_quantity holds shares bought but not yet settled into demat.
+    const quantity = (Number(h.quantity) || 0) + (Number(h.t1_quantity) || 0);
     const avgCost = Number(h.average_price) || 0;
     const lastPrice = Number(h.last_price) || 0;
     const invested = quantity * avgCost;
